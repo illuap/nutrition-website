@@ -37,6 +37,10 @@
             width: 100%;
         }
 
+        @media (max-width: 640px) {
+            .card { padding: 1rem; }
+        }
+
         .header-section {
             margin-bottom: 1.5rem;
         }
@@ -86,6 +90,12 @@
             border-bottom: 2px solid var(--border-color);
         }
 
+        /* Specific Column Support */
+        th:nth-child(1), td:nth-child(1) { width: 30px; text-align: center; padding-left: 0.25rem; padding-right: 0.25rem; }
+        th:nth-child(2), td:nth-child(2) { width: auto; }
+        th:nth-child(3), td:nth-child(3) { width: 25%; }
+        th:nth-child(4), td:nth-child(4) { width: 20%; }
+
         td {
             padding: 0.75rem 1rem;
             border-bottom: 1px solid var(--border-color);
@@ -117,7 +127,7 @@
             transition: background-color 0.2s;
         }
 
-        .main-row td {
+        .main-row td:not(:first-child) {
             white-space: normal; /* Allows description to wrap on mobile */
             min-width: 120px;
         }
@@ -139,18 +149,24 @@
             text-align: center;
         }
 
-        /* Hide Alt Name column on mobile to save horizontal space */
         @media (max-width: 768px) {
+            /* Hide Alt Name on Tablet/Mobile */
             th:nth-child(3), td:nth-child(3) {
                 display: none;
             }
+            th:nth-child(4), td:nth-child(4) { width: 30%; }
+        }
+
+        @media (max-width: 480px) {
+            /* Hide Food Group on very small screens to prioritize description */
+            th:nth-child(4), td:nth-child(4) { display: none; }
+            .main-row td { min-width: 0; }
         }
 
         .details-row td {
             padding: 0;
             border-bottom: 1px solid var(--border-color);
         }
-
         .details-content {
             padding: 1.5rem;
             background-color: #f8fafc;
@@ -160,10 +176,10 @@
             border-left: 4px solid var(--primary-color);
         }
 
-        @media (max-width: 480px) {
+        @media (max-width: 640px) {
             .details-content {
                 padding: 1rem;
-                gap: 1rem;
+                gap: 1.25rem;
             }
         }
 
@@ -210,7 +226,7 @@
 
         @media (max-width: 480px) {
             .nutrient-grid {
-                grid-template-columns: 1fr 1fr;
+                grid-template-columns: 1fr;
             }
         }
 
@@ -547,7 +563,7 @@
                 // 7. Create Headers
                 tableHeader.innerHTML = '';
                 const thToggle = document.createElement('th');
-                thToggle.style.width = '40px';
+                thToggle.style.width = '30px';
                 tableHeader.appendChild(thToggle);
 
                 const thName = document.createElement('th');
