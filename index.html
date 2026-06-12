@@ -626,7 +626,6 @@
                     const filter = searchTerm.toLowerCase();
                     filteredData = allData.filter(food => 
                         food.name.toLowerCase().includes(filter) || 
-                        food.group.toLowerCase().includes(filter) ||
                         (food.altName && food.altName.toLowerCase().includes(filter))
                     );
                 } else {
@@ -656,7 +655,6 @@
 
             filteredData = allData.filter(food => 
                 food.name.toLowerCase().includes(filter) || 
-                food.group.toLowerCase().includes(filter) ||
                 (food.altName && food.altName.toLowerCase().includes(filter))
             );
             currentPage = 1;
