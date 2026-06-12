@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nutrient Data Search</title>
+    <style>
+        :root {
+            --primary-color: #2563eb;
+            --bg-color: #f8fafc;
+            --text-color: #1e293b;
+            --border-color: #e2e8f0;
+        }
+
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            display: flex;
+            justify-content: center;
+            padding: 2rem;
+        }
+
+        .card {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 0.75rem;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+            width: 100%;
+        }
+
+        .header-section {
+            margin-bottom: 1.5rem;
+        }
+
+        h1 {
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .search-container {
+            position: relative;
+        }
+
+        #searchInput {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            border: 1px solid var(--border-color);
+            border-radius: 0.5rem;
+            font-size: 1rem;
+            box-sizing: border-box; /* Include padding and border in the element's total width */
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        #searchInput:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+
+        .table-container {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+        }
+
+        th {
+            background-color: #f1f5f9;
+            padding: 0.75rem 1rem;
+            font-weight: 600;
+            border-bottom: 2px solid var(--border-color);
+        }
+
+        td {
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid var(--border-color);
+            font-size: 0.9rem;
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        tr:hover td {
+            background-color: #f8fafc;
+        }
+
+        .no-results {
+            display: none;
+            padding: 2rem;
+            text-align: center;
+            color: #64748b;
+        }
+
+        /* Highlighting match (Optional improvement) */
+        .match {
+            background-color: yellow;
+        }
+
+        .main-row {
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .main-row:hover td {
+            background-color: #f1f5f9;
+        }
+
+        .main-row.expanded .toggle-icon {
+            transform: rotate(90deg);
+        }
+
+        .toggle-icon {
+            display: inline-block;
+            transition: transform 0.2s;
+            color: var(--primary-color);
+            font-size: 0.8rem;
+            width: 1rem;
+            text-align: center;
+        }
+
+        .details-row td {
+            padding: 0;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .details-content {
+            padding: 1.5rem;
+            background-color: #f8fafc;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.5rem;
+            border-left: 4px solid var(--primary-color);
+        }
+
+        .details-item h4 {
+            margin: 0 0 0.5rem 0;
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            color: #64748b;
+            letter-spacing: 0.05em;
+        }
+
+        .details-item p {
+            margin: 0;
+            font-size: 0.9rem;
+            color: var(--text-color);
+            line-height: 1.4;
+        }
+
+        .details-section-header {
+            grid-column: 1 / -1;
+            font-weight: 700;
+            font-size: 0.8rem;
+            color: var(--primary-color);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-top: 0.5rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .nutrient-grid {
+            grid-column: 1 / -1;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            gap: 1rem;
+            margin-top: 0.5rem;
+        }
+        .nutrient-card {
+            background: white;
+            padding: 0.75rem;
+            border-radius: 0.375rem;
+            border: 1px solid var(--border-color);
+        }
+
+        .pagination {
+            margin-top: 1.5rem;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 1rem;
+            padding-bottom: 1rem;
+        }
+
+        .pagination button {
+            padding: 0.5rem 1rem;
+            border: 1px solid var(--border-color);
+            background: white;
+            border-radius: 0.375rem;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .pagination button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .pagination button:hover:not(:disabled) {
+            background: #f1f5f9;
+        }
+
+        #pageInfo {
+            font-size: 0.875rem;
+            color: #64748b;
+        }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <div class="header-section">
+        <h1>Nutritional Information</h1>
+        <div class="search-container">
+            <input 
+                type="text" 
+                id="searchInput" 
+                placeholder="Type to filter nutritional data..."
+                aria-label="Search table"
+            >
+        </div>
+    </div>
+
+    <div class="table-container">
+        <table id="dataTable">
+            <thead>
+                <tr id="tableHeader"></tr>
+            </thead>
+            <tbody>
+            </tbody>
+        </table>
+        
+        <div class="pagination">
+            <button id="prevBtn" aria-label="Previous page">Previous</button>
+            <span id="pageInfo"></span>
+            <button id="nextBtn" aria-label="Next page">Next</button>
+        </div>
+
+        <div id="noResults" class="no-results">
+            No matching records found.
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const searchInput = document.getElementById('searchInput');
+        const tableHeader = document.getElementById('tableHeader');
+        const tableBody = document.querySelector('#dataTable tbody');
+        const noResults = document.getElementById('noResults');
+        const pageInfo = document.getElementById('pageInfo');
+        const prevBtn = document.getElementById('prevBtn');
+        const nextBtn = document.getElementById('nextBtn');
+
+        let allData = [];
+        let filteredData = [];
+        let currentPage = 1;
+        const rowsPerPage = 50;
+
+        // Robust CSV parser to handle commas inside quotes
+        function parseCSVLine(line) {
+            const result = [];
+            let startValueIndex = 0;
+            let inQuotes = false;
+            for (let i = 0; i < line.length; i++) {
+                if (line[i] === '"') {
+                    inQuotes = !inQuotes;
+                } else if (line[i] === ',' && !inQuotes) {
+                    result.push(line.substring(startValueIndex, i).replace(/^"|"$/g, '').trim());
+                    startValueIndex = i + 1;
+                }
+            }
+            result.push(line.substring(startValueIndex).replace(/^"|"$/g, '').trim());
+            return result;
+        }
+
+        function renderTable() {
+            tableBody.innerHTML = '';
+            const start = (currentPage - 1) * rowsPerPage;
+            const end = start + rowsPerPage;
+            const pageData = filteredData.slice(start, end);
+
+            if (pageData.length === 0) {
+                noResults.style.display = 'block';
+            } else {
+                noResults.style.display = 'none';
+                pageData.forEach(food => {
+                    const tr = document.createElement('tr');
+                    tr.classList.add('main-row');
+                    
+                    // Toggle cell
+                    const tdToggle = document.createElement('td');
+                    tdToggle.innerHTML = '<span class="toggle-icon">▶</span>';
+                    tr.appendChild(tdToggle);
+
+                    const tdName = document.createElement('td');
+                    tdName.textContent = food.name;
+                    tr.appendChild(tdName);
+
+                    const tdAltName = document.createElement('td');
+                    tdAltName.textContent = food.altName || '—';
+                    tr.appendChild(tdAltName);
+
+                    const tdGroup = document.createElement('td');
+                    tdGroup.textContent = food.group;
+                    tr.appendChild(tdGroup);
+
+                    tableBody.appendChild(tr);
+
+                    // Details row (hidden by default)
+                    const detailsTr = document.createElement('tr');
+                    detailsTr.classList.add('details-row');
+                    detailsTr.style.display = 'none';
+                    const detailsTd = document.createElement('td');
+                    detailsTd.setAttribute('colspan', tableHeader.children.length);
+                    
+                    let detailsHTML = `<div class="details-content">`;
+
+                    // Food Category
+                    detailsHTML += `<div class="details-section-header">Food Details</div>`;
+                    if (food.details) {
+                        const d = food.details;
+                        detailsHTML += `
+                            <div class="details-item">
+                                <h4>Translations & Alt</h4>
+                                <p><strong>FR:</strong> ${d.Food_Description_FR || '—'}<br>
+                                <strong>Alt (EN):</strong> ${d.Alternate_Description_EN || '—'}<br>
+                                <strong>Alt (FR):</strong> ${d.Alternate_Description_FR || '—'}</p>
+                            </div>
+                            <div class="details-item">
+                                <h4>Scientific & Database</h4>
+                                <p><strong>Scientific:</strong> <em>${d.ScientificName || '—'}</em><br>
+                                <strong>USDA NDB:</strong> ${d.USDA_NDB_Code || 'N/A'}<br>
+                                <strong>Food Group:</strong> ${food.group}</p>
+                            </div>
+                            <div class="details-item">
+                                <h4>Identifiers</h4>
+                                <p><strong>Food Code:</strong> ${food.id}</p>
+                            </div>
+                            <div class="details-item" style="grid-column: 1 / -1">
+                                <h4>Comments</h4>
+                                <p>${d.Comment_EN || 'No additional comments.'}</p>
+                            </div>
+                        `;
+                    } else {
+                        detailsHTML += `<div class="details-item"><p>No detailed food information available.</p></div>`;
+                    }
+
+                    // Nutrient Category
+                    detailsHTML += `<div class="details-section-header">Nutrient Details</div>`;
+                    if (food.nutrients && food.nutrients.length > 0) {
+                        detailsHTML += `<div class="nutrient-grid">`;
+                        food.nutrients.forEach(n => {
+                            detailsHTML += `
+                                <div class="nutrient-card">
+                                    <h4>${n.name}</h4>
+                                    <p><strong>${n.amount}</strong> ${n.unit}</p>
+                                    <p style="font-size: 0.7rem; color: #64748b; margin-top: 0.25rem;">Source: ${n.source}</p>
+                                </div>
+                            `;
+                        });
+                        detailsHTML += `</div>`;
+                    }
+                    else {
+                        detailsHTML += `<div class="details-item"><p>No detailed nutrient information available.</p></div>`;
+                    }
+
+                    // Measurement Category
+                    detailsHTML += `<div class="details-section-header">Measurements & Weights</div>`;
+                    if (food.measurements && food.measurements.length > 0) {
+                        food.measurements.forEach(m => {
+                            detailsHTML += `
+                                <div class="details-item">
+                                    <h4>${m.measureName || 'Measure ' + m.measureCode}</h4>
+                                    <p><strong>Type:</strong> ${m.typeName || m.typeCode}<br>
+                                    <strong>Conversion:</strong> ${m.conversion}g</p>
+                                </div>
+                            `;
+                        });
+                    } else {
+                        detailsHTML += `<div class="details-item"><p>No conversion data available for this food item.</p></div>`;
+                    }
+                    detailsHTML += `</div>`;
+                    detailsTd.innerHTML = detailsHTML;
+                    detailsTr.appendChild(detailsTd);
+                    tableBody.appendChild(detailsTr);
+
+                    // Toggle expansion on click
+                    tr.addEventListener('click', () => {
+                        const isVisible = detailsTr.style.display === 'table-row';
+                        detailsTr.style.display = isVisible ? 'none' : 'table-row';
+                        tr.classList.toggle('expanded', !isVisible);
+                    });
+                });
+            }
+
+            pageInfo.textContent = `Showing ${Math.min(start + 1, filteredData.length)} - ${Math.min(end, filteredData.length)} of ${filteredData.length} records`;
+            prevBtn.disabled = currentPage === 1;
+            nextBtn.disabled = currentPage >= Math.ceil(filteredData.length / rowsPerPage);
+        }
+
+        // Fetch all CSVs and join them
+        Promise.all([
+            fetch('data/Food_Name.csv').then(r => r.text()),
+            fetch('data/Nutrient_Amount.csv').then(r => r.text()),
+            fetch('data/Nutrient_Name.csv').then(r => r.text()),
+            fetch('data/Nutrient_Source.csv').then(r => r.text()),
+            fetch('data/Measure_Name.csv').then(r => r.text()).catch(() => ""),
+            fetch('data/Measure_Type.csv').then(r => r.text()).catch(() => ""),
+            fetch('data/Measure_Weight_Conversion.csv').then(r => r.text()).catch(() => ""),
+            fetch('data/CNF_Food_Group.csv').then(r => r.text()).catch(() => "")
+        ])
+            .then(([nameCsv, amountCsv, nutNameCsv, sourceCsv, measureNameCsv, measureTypeCsv, measureConvCsv, foodGroupCsv]) => {
+                // 1. Create a detailed Lookup Map for Food Names
+                const nameLines = nameCsv.split('\n').filter(line => line.trim() !== '');
+                const nameMap = new Map();
+                const nameHeaders = parseCSVLine(nameLines[0]);
+
+                for (let i = 1; i < nameLines.length; i++) {
+                    const cols = parseCSVLine(nameLines[i]);
+                    if (cols.length >= 2) {
+                        const foodObj = {};
+                        nameHeaders.forEach((h, idx) => foodObj[h] = cols[idx]);
+                        nameMap.set(cols[0], foodObj);
+                    }
+                }
+
+                // 2. Create a Lookup Map for Nutrient Names
+                const nutLines = nutNameCsv.split('\n').filter(line => line.trim() !== '');
+                const nutMap = new Map();
+                const nutHeaders = parseCSVLine(nutLines[0]);
+                for (let i = 1; i < nutLines.length; i++) {
+                    const cols = parseCSVLine(nutLines[i]);
+                    if (cols.length >= 2) {
+                        const nutObj = {};
+                        nutHeaders.forEach((h, idx) => nutObj[h] = cols[idx]);
+                        nutMap.set(cols[0], nutObj); // Nutrient_Code -> Data
+                    }
+                }
+
+                // 3. Create a Lookup Map for Nutrient Sources
+                const sourceLines = sourceCsv.split('\n').filter(line => line.trim() !== '');
+                const sourceMap = new Map();
+                const sourceHeaders = parseCSVLine(sourceLines[0]);
+                for (let i = 1; i < sourceLines.length; i++) {
+                    const cols = parseCSVLine(sourceLines[i]);
+                    if (cols.length >= 2) {
+                        const sourceObj = {};
+                        sourceHeaders.forEach((h, idx) => sourceObj[h] = cols[idx]);
+                        sourceMap.set(cols[0], sourceObj); // Nutrient_Source_Code -> Data
+                    }
+                }
+
+                // 4. Create Lookup Maps for Measurements
+                const measureNameMap = new Map();
+                if (measureNameCsv) {
+                    const mNameLines = measureNameCsv.split('\n').filter(line => line.trim() !== '');
+                    for (let i = 1; i < mNameLines.length; i++) {
+                        const cols = parseCSVLine(mNameLines[i]);
+                        if (cols.length >= 2) measureNameMap.set(cols[0], cols[1]); // Code -> Name EN
+                    }
+                }
+
+                const measureTypeMap = new Map();
+                if (measureTypeCsv) {
+                    const mTypeLines = measureTypeCsv.split('\n').filter(line => line.trim() !== '');
+                    for (let i = 1; i < mTypeLines.length; i++) {
+                        const cols = parseCSVLine(mTypeLines[i]);
+                        if (cols.length >= 2) measureTypeMap.set(cols[0], cols[1]); // Code -> Name EN
+                    }
+                }
+
+                const measureConvMap = new Map();
+                if (measureConvCsv) {
+                    const mConvLines = measureConvCsv.split('\n').filter(line => line.trim() !== '');
+                    for (let i = 1; i < mConvLines.length; i++) {
+                        const cols = parseCSVLine(mConvLines[i]);
+                        if (cols.length >= 4) {
+                            const foodId = cols[0].trim();
+                            if (!measureConvMap.has(foodId)) measureConvMap.set(foodId, []);
+                            measureConvMap.get(foodId).push({
+                                typeCode: cols[1],
+                                typeName: measureTypeMap.get(cols[1]),
+                                measureCode: cols[2],
+                                measureName: measureNameMap.get(cols[2]),
+                                conversion: cols[3]
+                            });
+                        }
+                    }
+                }
+
+                // 5. Create Lookup Map for Food Groups
+                const foodGroupMap = new Map();
+                if (foodGroupCsv) {
+                    const fgLines = foodGroupCsv.split('\n').filter(line => line.trim() !== '');
+                    for (let i = 1; i < fgLines.length; i++) {
+                        const cols = parseCSVLine(fgLines[i]);
+                        if (cols.length >= 2) foodGroupMap.set(cols[0], cols[1]); // Code -> Name EN
+                    }
+                }
+
+                // 6. Process Nutrient Data
+                const amountLines = amountCsv.split('\n').filter(line => line.trim() !== '');
+                if (amountLines.length === 0) return;
+
+                // 7. Create Headers
+                tableHeader.innerHTML = '';
+                const thToggle = document.createElement('th');
+                thToggle.style.width = '40px';
+                tableHeader.appendChild(thToggle);
+
+                const thName = document.createElement('th');
+                thName.textContent = "Food Description";
+                tableHeader.appendChild(thName);
+
+                const thAltName = document.createElement('th');
+                thAltName.textContent = "Alternative Name";
+                tableHeader.appendChild(thAltName);
+
+                const thGroup = document.createElement('th');
+                thGroup.textContent = "Food Group";
+                tableHeader.appendChild(thGroup);
+
+                // 8. Join Data: Group by Food_Code
+                const foodMap = new Map();
+                for (let i = 1; i < amountLines.length; i++) {
+                    const cols = parseCSVLine(amountLines[i]);
+                    if (cols.length < 2) continue;
+                    
+                    const foodId = cols[0];
+                    if (!foodMap.has(foodId)) {
+                        const foodInfo = nameMap.get(foodId);
+                        const foodGroupName = foodInfo && foodInfo.CNF_Food_Group_Code ? foodGroupMap.get(foodInfo.CNF_Food_Group_Code) : 'N/A';
+                        foodMap.set(foodId, {
+                            id: foodId,
+                            name: foodInfo ? foodInfo.Food_Description_EN : "Unknown Food",
+                            altName: foodInfo ? foodInfo.Alternate_Description_EN : "",
+                            group: foodGroupName,
+                            details: foodInfo,
+                            nutrients: [],
+                            measurements: measureConvMap.get(foodId) || []
+                        });
+                    }
+                    
+                    const nutId = cols[1];
+                    const amount = cols[2];
+                    const sourceId = cols[5];
+                    const nutInfo = nutMap.get(nutId);
+                    const sourceInfo = sourceMap.get(sourceId);
+                    
+                    foodMap.get(foodId).nutrients.push({
+                        name: nutInfo ? (nutInfo.Nutrient_Name_EN || nutInfo.NutrientName) : `Nutrient ${nutId}`,
+                        amount: amount,
+                        unit: nutInfo ? nutInfo.Nutrient_Unit : '',
+                        source: sourceInfo ? sourceInfo.Nutrient_Source_Description_EN : sourceId
+                    });
+                }
+                allData = Array.from(foodMap.values());
+                // Sort nutrients alphabetically for each food item
+                allData.forEach(food => {
+                    food.nutrients.sort((a, b) => a.name.localeCompare(b.name));
+                });
+
+                // Check for search term in URL on initial load
+                const urlParams = new URLSearchParams(window.location.search);
+                const searchTerm = urlParams.get('search');
+                if (searchTerm) {
+                    searchInput.value = searchTerm;
+                    const filter = searchTerm.toLowerCase();
+                    filteredData = allData.filter(food => 
+                        food.name.toLowerCase().includes(filter) || 
+                        food.group.toLowerCase().includes(filter) ||
+                        (food.altName && food.altName.toLowerCase().includes(filter))
+                    );
+                } else {
+                    filteredData = [...allData];
+                }
+
+                renderTable();
+            })
+            .catch(error => {
+                console.error('Error loading CSV:', error);
+                noResults.textContent = "Error loading data. Ensure Food_Name.csv and Nutrient_Amount.csv are in the 'data' folder and you are running this through a local server (like Live Server in VS Code).";
+                noResults.style.display = 'block';
+            });
+
+        searchInput.addEventListener('input', () => {
+            const term = searchInput.value;
+            const filter = term.toLowerCase();
+            
+            // Update URL query string without reloading the page
+            const url = new URL(window.location);
+            if (term) {
+                url.searchParams.set('search', term);
+            } else {
+                url.searchParams.delete('search');
+            }
+            window.history.replaceState({}, '', url);
+
+            filteredData = allData.filter(food => 
+                food.name.toLowerCase().includes(filter) || 
+                food.group.toLowerCase().includes(filter) ||
+                (food.altName && food.altName.toLowerCase().includes(filter))
+            );
+            currentPage = 1;
+            renderTable();
+        });
+
+        prevBtn.addEventListener('click', () => {
+            if (currentPage > 1) {
+                currentPage--;
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+                renderTable();
+            }
+        });
+
+        nextBtn.addEventListener('click', () => {
+            if (currentPage < Math.ceil(filteredData.length / rowsPerPage)) {
+                currentPage++;
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+                renderTable();
+            }
+        });
+    });
+</script>
+
+</body>
+</html>
